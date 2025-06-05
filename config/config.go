@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/etix/mirrorbits/core"
+	"github.com/etix/mirrorbits/utils"
 	"github.com/op/go-logging"
 	"gopkg.in/yaml.v3"
 )
@@ -91,7 +92,7 @@ type Configuration struct {
 	WeightDistributionRange float32    `yaml:"WeightDistributionRange"`
 	DisableOnMissingFile    bool       `yaml:"DisableOnMissingFile"`
 	AllowOutdatedFiles      []OutdatedFilesConfig `yaml:"AllowOutdatedFiles"`
-	Fallbacks               []fallback `yaml:"Fallbacks"`
+	Fallbacks               []Fallback `yaml:"Fallbacks"`
 
 	RedisSentinelMasterName string      `yaml:"RedisSentinelMasterName"`
 	RedisSentinels          []sentinels `yaml:"RedisSentinels"`
@@ -100,7 +101,7 @@ type Configuration struct {
 	RPCPassword      string `yaml:"RPCPassword"`
 }
 
-type fallback struct {
+type Fallback struct {
 	URL           string `yaml:"URL"`
 	CountryCode   string `yaml:"CountryCode"`
 	ContinentCode string `yaml:"ContinentCode"`
@@ -162,7 +163,7 @@ func ReloadConfig() error {
 	if c.WeightDistributionRange <= 0 {
 		return fmt.Errorf("WeightDistributionRange must be > 0")
 	}
-	if !isInSlice(c.OutputMode, []string{"auto", "json", "redirect"}) {
+	if !utils.IsInSlice(c.OutputMode, []string{"auto", "json", "redirect"}) {
 		return fmt.Errorf("Config: outputMode can only be set to 'auto', 'json' or 'redirect'")
 	}
 	if c.Repository == "" {
@@ -174,6 +175,9 @@ func ReloadConfig() error {
 	}
 	if c.RepositoryScanInterval < 0 {
 		c.RepositoryScanInterval = 0
+	}
+	for i := range c.Fallbacks {
+		c.Fallbacks[i].URL = utils.NormalizeURL(c.Fallbacks[i].URL)
 	}
 	for _, rule := range c.AllowOutdatedFiles {
 		if len(rule.Prefix) > 0 && rule.Prefix[0] != '/' {
@@ -261,14 +265,4 @@ func testSentinelsEq(a, b []sentinels) bool {
 	}
 
 	return true
-}
-
-//DUPLICATE
-func isInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
 }
